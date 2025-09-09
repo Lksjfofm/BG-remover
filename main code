@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Background Remover - Free Online Tool</title>
+
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="Free AI-powered background remover tool. Upload any image and remove its background instantly online. Fast, secure, and free.">
+  <meta name="keywords" content="background remover, remove image background, free online tool, AI background eraser">
+  <meta name="author" content="Your Name">
+  <link rel="canonical" href="https://yourusername.github.io/bg-remover/">
+
+  <!-- Open Graph (for social sharing) -->
+  <meta property="og:title" content="Free AI Background Remover Tool">
+  <meta property="og:description" content="Remove image backgrounds instantly with AI, free and online.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://yourusername.github.io/bg-remover/">
+  <meta property="og:image" content="https://yourusername.github.io/bg-remover/preview.png">
+
+  <!-- Google AdSense (replace YOUR_ID below after approval) -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_PUBLISHER_ID"
+     crossorigin="anonymous"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+    }
+    header {
+      background: #333;
+      color: #fff;
+      padding: 20px;
+    }
+    .container {
+      margin: 20px auto;
+      max-width: 800px;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
+    }
+    input[type=file] {
+      margin: 20px 0;
+    }
+    canvas {
+      margin-top: 20px;
+      max-width: 100%;
+      border: 1px solid #ddd;
+    }
+    .ads {
+      margin: 30px 0;
+      min-height: 90px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Free AI Background Remover</h1>
+    <p>Upload your image & remove background instantly.</p>
+  </header>
+
+  <div class="container">
+    <!-- Ad Placement -->
+    <div class="ads">
+      <ins class="adsbygoogle"
+           style="display:block"
+           data-ad-client="ca-pub-YOUR_PUBLISHER_ID"
+           data-ad-slot="YOUR_AD_UNIT_ID"
+           data-ad-format="auto"
+           data-full-width-responsive="true"></ins>
+      <script>
+           (adsbygoogle = window.adsbygoogle || []).push({});
+      </script>
+    </div>
+
+    <!-- Upload Form -->
+    <input type="file" id="upload" accept="image/*" />
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <!-- BodyPix for AI background removal -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.9.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix"></script>
+
+  <script>
+    const upload = document.getElementById("upload");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    upload.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
+      img.onload = async () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+
+        const net = await bodyPix.load();
+        const segmentation = await net.segmentPerson(img);
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const pixels = imageData.data;
+
+        for (let i = 0; i < pixels.length; i += 4) {
+          const n = i / 4;
+          if (segmentation.data[n] === 0) {
+            pixels[i + 3] = 0; // transparent background
+          }
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+      };
+    });
+  </script>
+</body>
+</html>
