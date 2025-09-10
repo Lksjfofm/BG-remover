@@ -3,354 +3,380 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>High-Quality BG Remover — Demo</title>
-  <meta name="description" content="High-quality client-side background remover using MediaPipe & Pathological fallback. Adjust blur & threshold to refine edges.">
+  <title>BG Remover — Fixed Upload & Download</title>
+  <meta name="description" content="High-quality client-side background remover (MediaPipe + BodyPix fallback). Fixed file upload and download functionality." />
   <style>
-    :root{
-      --bg1:#0b1220; --bg2:#071428; --card:#0f1724; --accent:#ff6a00; --muted:#9fb0c8;
-    }
+    :root{--bg:#071428;--card:#0b1220;--accent:#ff6a00;--muted:#9fb0c8}
     *{box-sizing:border-box}
-    body{margin:0; font-family:Inter,system-ui,Arial; background:linear-gradient(180deg,var(--bg1),var(--bg2)); color:#e8f0ff; min-height:100vh}
-    .wrap{max-width:1000px;margin:28px auto;padding:18px}
-    header{display:flex;align-items:center;justify-content:space-between;gap:12px}
-    h1{margin:0;font-size:1.2rem}
-    main{display:grid;grid-template-columns:1fr 340px;gap:18px;margin-top:18px}
-    @media(max-width:980px){main{grid-template-columns:1fr}}
-    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:14px;border-radius:12px;box-shadow:0 12px 40px rgba(2,6,23,0.6)}
-    .uploader{display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;min-height:420px;border-radius:10px;border:2px dashed rgba(255,255,255,0.04);padding:12px;background:rgba(255,255,255,0.01)}
-    #fileInput{opacity:0;position:absolute;inset:0;cursor:pointer}
-    .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    .btn{background:linear-gradient(90deg,var(--accent),#ff8a4b); color:#fff; border:none;padding:12px 18px;border-radius:10px;font-weight:700; cursor:pointer; box-shadow:0 10px 30px rgba(255,106,0,0.18); transition:transform .16s}
-    .btn:hover{transform:translateY(-3px)}
-    .btn.secondary{background:transparent;border:1px solid rgba(255,255,255,0.06); box-shadow:none;color:var(--muted);font-weight:600}
+    body{margin:0;font-family:Inter, system-ui, Arial;background:linear-gradient(180deg,var(--bg),#041023);color:#eaf2ff;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+    .wrap{width:100%;max-width:1000px}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:18px;border-radius:12px;box-shadow:0 18px 60px rgba(0,0,0,0.6)}
+    h1{margin:0 0 8px 0;font-size:1.25rem}
+    .uploader{display:flex;gap:18px;align-items:flex-start}
+    .left{flex:1;display:flex;flex-direction:column;gap:12px}
+    .right{width:320px}
+    .drop{border-radius:10px;border:2px dashed rgba(255,255,255,0.04);padding:14px;min-height:360px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;background:rgba(255,255,255,0.01)}
+    input[type=file]{display:block;margin:8px 0}
+    .controls{display:flex;gap:10px;flex-wrap:wrap}
+    .btn{background:linear-gradient(90deg,var(--accent),#ff8a4b);color:#fff;border:none;padding:10px 14px;border-radius:10px;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(255,106,0,0.14)}
+    .btn.secondary{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
     canvas{max-width:100%;height:auto;border-radius:8px;background:transparent}
-    label.field{display:block;color:var(--muted);font-size:0.92rem;margin-top:8px}
+    label.field{display:block;color:var(--muted);font-size:0.9rem}
     input[type=range]{width:100%}
-    .muted{color:var(--muted)}
-    .ads-slot{height:110px;border-radius:8px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02));display:grid;place-items:center;color:var(--muted)}
-    footer{margin-top:18px;color:var(--muted);font-size:0.9rem;display:flex;justify-content:space-between;align-items:center}
+    .muted{color:var(--muted);font-size:0.9rem}
+    footer{margin-top:12px;color:var(--muted);font-size:0.85rem;display:flex;justify-content:space-between}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <header>
-      <div>
-        <h1>High-Quality BG Remover</h1>
-        <div class="muted">Uses MediaPipe SelfieSegmentation for improved matting (best for portraits)</div>
+    <div class="card">
+      <h1>Background Remover — Fixed Upload & Download</h1>
+      <div class="muted">Uses MediaPipe SelfieSegmentation (best for portraits) with BodyPix fallback. Upload + Download fixed.</div>
+
+      <div style="height:16px"></div>
+
+      <div class="uploader">
+        <div class="left">
+          <div id="dropZone" class="drop" tabindex="0" aria-label="Upload or drop image">
+            <div style="text-align:center;max-width:780px">
+              <p id="hint">Drag & drop an image here<br>or</p>
+              <input id="fileInput" type="file" accept="image/*" />
+              <div style="margin-top:10px" class="controls">
+                <button id="hqBtn" class="btn" disabled>Remove Background (HQ)</button>
+                <button id="fastBtn" class="btn secondary" disabled>Fast Remove</button>
+                <button id="resetBtn" class="btn secondary" disabled>Reset</button>
+                <button id="downloadBtn" class="btn" disabled>Download PNG</button>
+              </div>
+            </div>
+            <canvas id="resultCanvas" style="margin-top:12px;display:block"></canvas>
+          </div>
+        </div>
+
+        <aside class="right">
+          <div class="card" style="padding:12px">
+            <label class="field">Edge blur (px): <span id="edgeBlurVal">8</span></label>
+            <input id="edgeBlur" type="range" min="0" max="40" value="8">
+            <label class="field">Alpha threshold (0..255): <span id="alphaVal">30</span></label>
+            <input id="alphaThresh" type="range" min="0" max="255" value="30">
+            <label class="field">Mask gamma (30..250): <span id="gammaVal">100</span></label>
+            <input id="maskGamma" type="range" min="30" max="250" value="100">
+
+            <div style="height:12px"></div>
+            <div class="muted">Status: <span id="status">idle</span></div>
+            <div style="height:8px"></div>
+            <div class="muted">Tip: For best results use portrait photos with contrast between subject & background.</div>
+          </div>
+        </aside>
       </div>
-      <div class="muted">Private • Client-side • No uploads</div>
-    </header>
 
-    <main>
-      <section class="card">
-        <div class="uploader" id="dropZone" tabindex="0" aria-label="Image uploader area">
-          <div style="position:relative;width:100%;max-width:920px">
-            <p id="hint">Drag & drop image here or click to choose (portrait photos work best)</p>
-            <input id="file" type="file" accept="image/*" />
-            <canvas id="resultCanvas" width="800" height="600" style="display:none"></canvas>
-            <div id="previewWrap" style="display:flex;flex-direction:column;align-items:center;gap:8px"></div>
-          </div>
-
-          <div class="controls" style="margin-top:10px">
-            <button class="btn" id="hqBtn">Remove Background (HQ)</button>
-            <button class="btn secondary" id="fastBtn">Fast Remove</button>
-            <button class="btn secondary" id="resetBtn">Reset</button>
-            <button class="btn" id="downloadBtn" disabled>Download PNG</button>
-          </div>
-
-          <div id="status" class="muted" style="margin-top:8px">Model idle</div>
-        </div>
-      </section>
-
-      <aside class="card" aria-label="Settings & Ads">
-        <label class="field">Edge blur (px)
-          <input type="range" id="edgeBlur" min="0" max="40" value="8">
-        </label>
-
-        <label class="field">Alpha threshold (0..255)
-          <input type="range" id="alphaThresh" min="0" max="255" value="30">
-        </label>
-
-        <label class="field">Mask gamma (softness)
-          <input type="range" id="maskGamma" min="30" max="250" value="100">
-        </label>
-
-        <label class="field">Mode
-          <select id="modeSelect">
-            <option value="person" selected>Person (Portraits)</option>
-            <option value="auto">Auto (try fallback)</option>
-          </select>
-        </label>
-
-        <div class="ads-slot" style="margin-top:12px">
-          <!-- Ad slot placeholder - replace with your AdSense code -->
-          Ad slot (replace with AdSense after approval)
-        </div>
-
-        <div style="font-size:0.85rem;color:var(--muted);margin-top:10px">
-          Tip: For best hair matting use a portrait photo with contrast between subject & background.
-        </div>
-      </aside>
-    </main>
-
-    <footer>
-      <div>© <span id="year"></span> BG Remover</div>
-      <div class="muted">If you need absolute studio-level results for products, consider a server-side U²-Net integration.</div>
-    </footer>
+      <footer>
+        <div>© <span id="year"></span> BG Remover</div>
+        <div class="muted">If you want studio-grade product removal later, we can add a server-side U²-Net.</div>
+      </footer>
+    </div>
   </div>
 
-  <!-- MediaPipe Selfie Segmentation -->
+  <!-- MediaPipe SelfieSegmentation + BodyPix fallback -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js"></script>
-  <!-- Fallback: body-pix (for older browsers / alternative). Loaded deferredly -->
   <script defer src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix@2.0.5/dist/body-pix.min.js"></script>
 
   <script>
-    // Elements
-    const fileInput = document.getElementById('file');
-    const dropZone = document.getElementById('dropZone');
-    const previewWrap = document.getElementById('previewWrap');
-    const statusEl = document.getElementById('status');
-    const resultCanvas = document.getElementById('resultCanvas');
-    const ctx = resultCanvas.getContext('2d');
-    const hqBtn = document.getElementById('hqBtn');
-    const fastBtn = document.getElementById('fastBtn');
-    const resetBtn = document.getElementById('resetBtn');
-    const downloadBtn = document.getElementById('downloadBtn');
-    const edgeBlur = document.getElementById('edgeBlur');
-    const alphaThresh = document.getElementById('alphaThresh');
-    const maskGamma = document.getElementById('maskGamma');
-    const modeSelect = document.getElementById('modeSelect');
-    const yearEl = document.getElementById('year');
-    yearEl.textContent = new Date().getFullYear();
+    (function () {
+      // DOM
+      const fileInput = document.getElementById('fileInput');
+      const dropZone = document.getElementById('dropZone');
+      const resultCanvas = document.getElementById('resultCanvas');
+      const ctx = resultCanvas.getContext('2d', { willReadFrequently: true });
+      const hqBtn = document.getElementById('hqBtn');
+      const fastBtn = document.getElementById('fastBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const downloadBtn = document.getElementById('downloadBtn');
+      const statusEl = document.getElementById('status');
+      const edgeBlur = document.getElementById('edgeBlur');
+      const alphaThresh = document.getElementById('alphaThresh');
+      const maskGamma = document.getElementById('maskGamma');
+      const edgeBlurVal = document.getElementById('edgeBlurVal');
+      const alphaVal = document.getElementById('alphaVal');
+      const gammaVal = document.getElementById('gammaVal');
+      const yearEl = document.getElementById('year');
+      yearEl.textContent = new Date().getFullYear();
 
-    let img = new Image();
-    img.crossOrigin = 'anonymous';
-    let originalImageData = null;
-    let bodyPixNet = null;
-    let useMediaPipe = (typeof SelfieSegmentation !== 'undefined');
-    let segmenter = null;
+      // state
+      let img = new Image();
+      let originalImageData = null;
+      let bodyPixNet = null;
+      let useMediaPipe = (typeof SelfieSegmentation !== 'undefined');
+      let segmenter = null;
+      const MAX_DIM = 1400;
 
-    // Limit image size for performance
-    const MAX_DIM = 1400;
+      // UI helpers
+      function setStatus(t){ statusEl.textContent = t; }
+      function setButtonsForImageLoaded(enabled = true){
+        hqBtn.disabled = !enabled;
+        fastBtn.disabled = !enabled;
+        resetBtn.disabled = !enabled;
+        downloadBtn.disabled = !enabled;
+      }
 
-    // Initialize MediaPipe segmenter if available
-    if (useMediaPipe) {
-      segmenter = new SelfieSegmentation({
-        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`
+      // wire range displays
+      edgeBlur.addEventListener('input', ()=> edgeBlurVal.textContent = edgeBlur.value);
+      alphaThresh.addEventListener('input', ()=> alphaVal.textContent = alphaThresh.value);
+      maskGamma.addEventListener('input', ()=> gammaVal.textContent = maskGamma.value);
+
+      // Setup MediaPipe if available
+      if (useMediaPipe) {
+        try {
+          segmenter = new SelfieSegmentation({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`
+          });
+          segmenter.setOptions({ modelSelection: 1 });
+          setStatus('MediaPipe ready');
+        } catch (e) {
+          console.warn('MediaPipe init failed, will fallback to BodyPix:', e);
+          useMediaPipe = false;
+          setStatus('MediaPipe init failed — BodyPix fallback');
+        }
+      } else {
+        setStatus('MediaPipe not available — BodyPix fallback');
+      }
+
+      // Drag & drop
+      ['dragenter','dragover','dragleave','drop'].forEach(ev=>{
+        dropZone.addEventListener(ev, e=>{ e.preventDefault(); e.stopPropagation(); });
       });
-      // modelSelection: 0 or 1 (1 for general, 0 for landscape?). 1 is better for portraits.
-      segmenter.setOptions({modelSelection: 1});
-      status('MediaPipe ready (HQ)');
-    } else {
-      status('MediaPipe not available — bodyPix fallback will be used for person segmentation');
-    }
+      dropZone.addEventListener('drop', (e)=> { const f = e.dataTransfer.files && e.dataTransfer.files[0]; if (f) handleFile(f); });
+      dropZone.addEventListener('click', ()=> fileInput.click());
+      dropZone.addEventListener('keydown', (e)=> { if(e.key === 'Enter') fileInput.click(); });
 
-    // Drag-and-drop
-    ['dragenter','dragover','dragleave','drop'].forEach(ev=>{
-      dropZone.addEventListener(ev, e=>{ e.preventDefault(); e.stopPropagation(); });
-    });
-    dropZone.addEventListener('drop', (e)=>{ const f = e.dataTransfer.files[0]; if(f) handleFile(f); });
-    dropZone.addEventListener('click', ()=> fileInput.click());
-    fileInput.addEventListener('change', (e)=>{ const f = e.target.files[0]; if(f) handleFile(f); });
+      // file input
+      fileInput.addEventListener('change', (e)=> {
+        const f = e.target.files && e.target.files[0];
+        if (f) handleFile(f);
+        // reset input so same file can be chosen again if needed
+        fileInput.value = '';
+      });
 
-    async function handleFile(file){
-      if(!file || !file.type.startsWith('image/')) { alert('Please choose an image file'); return; }
-      const url = URL.createObjectURL(file);
-      await loadImage(url);
-      previewWrap.innerHTML = ''; // clear
-      resultCanvas.style.display = 'block';
-      downloadBtn.disabled = false;
-      status('Image loaded — choose Remove Background (HQ)');
-    }
+      async function handleFile(file){
+        try {
+          if (!file.type || !file.type.startsWith('image/')) { alert('Please select an image file.'); return; }
+          setStatus('Loading image...');
+          const url = URL.createObjectURL(file);
+          await loadImage(url);
+          URL.revokeObjectURL(url);
+          setStatus('Image loaded — ready');
+          setButtonsForImageLoaded(true);
+        } catch (err) {
+          console.error(err);
+          alert('Failed to load image: ' + err.message);
+          setStatus('error loading image');
+        }
+      }
 
-    function loadImage(src){
-      return new Promise((resolve)=>{
-        img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = ()=>{
-          // limit size
-          let w = img.naturalWidth, h = img.naturalHeight;
-          if(Math.max(w,h) > MAX_DIM){
-            const scale = MAX_DIM / Math.max(w,h);
-            w = Math.round(w*scale); h = Math.round(h*scale);
+      function loadImage(src){
+        return new Promise((resolve, reject) => {
+          img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => {
+            try {
+              let w = img.naturalWidth, h = img.naturalHeight;
+              if (Math.max(w,h) > MAX_DIM) {
+                const scale = MAX_DIM / Math.max(w,h);
+                w = Math.round(w*scale); h = Math.round(h*scale);
+              }
+              resultCanvas.width = w; resultCanvas.height = h;
+              ctx.clearRect(0,0,w,h);
+              ctx.drawImage(img, 0, 0, w, h);
+              originalImageData = ctx.getImageData(0,0,w,h);
+              resolve();
+            } catch (e) {
+              reject(e);
+            }
+          };
+          img.onerror = (e) => reject(new Error('Image load error'));
+          img.src = src;
+        });
+      }
+
+      // MediaPipe segmentation wrapper -> returns ImageBitmap (mask)
+      function segmentWithMediaPipe(imageEl){
+        return new Promise((resolve, reject) => {
+          if (!segmenter) return reject(new Error('MediaPipe not initialized'));
+          // set a one-time callback
+          segmenter.onResults((results) => {
+            // results.segmentationMask is an ImageBitmap (grayscale mask)
+            if (!results || !results.segmentationMask) return reject(new Error('No segmentation mask'));
+            resolve(results.segmentationMask);
+          });
+          // Send the HTMLImageElement to segmenter
+          segmenter.send({image: imageEl}).catch(reject);
+        });
+      }
+
+      // BodyPix fallback -> returns a Canvas element as mask
+      async function ensureBodyPix(){
+        if (bodyPixNet) return bodyPixNet;
+        setStatus('Loading BodyPix (fallback)...');
+        bodyPixNet = await bodyPix.load({architecture:'MobileNetV1', multiplier:0.75, outputStride:16});
+        setStatus('BodyPix ready');
+        return bodyPixNet;
+      }
+
+      async function segmentWithBodyPix(imageEl) {
+        const net = await ensureBodyPix();
+        const segmentation = await net.segmentPerson(imageEl, {internalResolution:'medium', segmentationThreshold:0.6});
+        const w = resultCanvas.width, h = resultCanvas.height;
+        const maskCanvas = document.createElement('canvas'); maskCanvas.width = w; maskCanvas.height = h;
+        const mctx = maskCanvas.getContext('2d');
+        const imgData = mctx.createImageData(w,h);
+        for (let i=0; i<w*h; i++) {
+          const v = segmentation.data[i] ? 255 : 0;
+          imgData.data[i*4 + 0] = v;
+          imgData.data[i*4 + 1] = v;
+          imgData.data[i*4 + 2] = v;
+          imgData.data[i*4 + 3] = 255;
+        }
+        mctx.putImageData(imgData, 0, 0);
+        return maskCanvas;
+      }
+
+      // Core mask application logic - accepts maskSource (ImageBitmap or Canvas) and writes RGBA result onto resultCanvas
+      function applyMaskMaskSource(maskSource) {
+        const w = resultCanvas.width, h = resultCanvas.height;
+        // draw mask to a temporary canvas so we can blur and read pixels
+        const maskCanvas = document.createElement('canvas'); maskCanvas.width = w; maskCanvas.height = h;
+        const mctx = maskCanvas.getContext('2d');
+        // apply blur via canvas filter for smoother edges
+        const blurPx = parseInt(edgeBlur.value, 10) || 0;
+        mctx.filter = `blur(${blurPx}px)`;
+        mctx.drawImage(maskSource, 0, 0, w, h);
+        mctx.filter = 'none';
+
+        // read mask data and combine with original image
+        const maskData = mctx.getImageData(0,0,w,h).data;
+        const orig = originalImageData.data;
+        const out = ctx.createImageData(w,h);
+
+        const thresh = parseInt(alphaThresh.value,10) || 0;
+        const gammaVal = (parseInt(maskGamma.value,10) || 100) / 100.0;
+
+        for (let i = 0; i < out.data.length; i += 4) {
+          // copy RGB
+          out.data[i]   = orig[i];
+          out.data[i+1] = orig[i+1];
+          out.data[i+2] = orig[i+2];
+          // mask sample is in R channel (grayscale mask)
+          const a = maskData[i]; // 0..255
+          // gamma adjustment to keep soft hair natural but boost edges
+          let m = Math.pow(a / 255, gammaVal) * 255;
+          // threshold small speckles
+          if (m < thresh) m = 0;
+          out.data[i+3] = Math.round(m);
+        }
+        // draw final result
+        ctx.clearRect(0,0,w,h);
+        ctx.putImageData(out, 0, 0);
+      }
+
+      // HQ button -> tries MediaPipe then BodyPix fallback
+      hqBtn.addEventListener('click', async () => {
+        if (!originalImageData) { alert('Please upload an image first'); return; }
+        setStatus('Processing (HQ) ...');
+        try {
+          if (useMediaPipe && segmenter) {
+            const maskBitmap = await segmentWithMediaPipe(img);
+            // maskBitmap is an ImageBitmap - pass directly to apply
+            applyMaskMaskSource(maskBitmap);
+            setStatus('Done — MediaPipe applied. Tweak blur/threshold for refinements.');
+            return;
           }
-          resultCanvas.width = w; resultCanvas.height = h;
-          ctx.clearRect(0,0,w,h);
-          ctx.drawImage(img, 0,0,w,h);
-          originalImageData = ctx.getImageData(0,0,w,h);
-          resolve();
-        };
-        img.src = src;
-      });
-    }
-
-    // Helper: status
-    function status(t){ statusEl.textContent = t; }
-
-    // HQ segmentation using MediaPipe (works for people)
-    function segmentWithMediaPipe(imageElement){
-      return new Promise((resolve, reject) => {
-        if(!segmenter) return reject('MediaPipe not initialized');
-        const once = (results) => {
-          // remove listener
-          segmenter.onResults(()=>{});
-          resolve(results.segmentationMask);
-        };
-        segmenter.onResults(once);
-        segmenter.send({image: imageElement}).catch(reject);
-      });
-    }
-
-    // BodyPix fallback
-    async function ensureBodyPix(){
-      if(bodyPixNet) return bodyPixNet;
-      status('Loading BodyPix fallback (may take a few seconds)...');
-      bodyPixNet = await bodyPix.load({architecture: 'MobileNetV1', multiplier: 0.75, outputStride: 16});
-      status('BodyPix ready (fallback)');
-      return bodyPixNet;
-    }
-
-    async function segmentWithBodyPix(imageElement){
-      const net = await ensureBodyPix();
-      // return segmentation with person mask
-      const segmentation = await net.segmentPerson(imageElement, {internalResolution:'medium', segmentationThreshold:0.6});
-      // Build mask canvas from segmentation
-      const w = resultCanvas.width, h = resultCanvas.height;
-      const maskCanvas = document.createElement('canvas'); maskCanvas.width = w; maskCanvas.height = h;
-      const mctx = maskCanvas.getContext('2d');
-      const imgData = mctx.createImageData(w,h);
-      for(let i=0;i<w*h;i++){
-        const v = segmentation.data[i] ? 255 : 0;
-        imgData.data[i*4+0] = v;
-        imgData.data[i*4+1] = v;
-        imgData.data[i*4+2] = v;
-        imgData.data[i*4+3] = 255;
-      }
-      mctx.putImageData(imgData,0,0);
-      return maskCanvas;
-    }
-
-    // Core: apply mask (maskCanvas may be HTMLImage/Canvas) -> produce final RGBA result on resultCanvas
-    function applyMaskMaskSource(maskSource){
-      const w = resultCanvas.width, h = resultCanvas.height;
-      // maskSource: HTMLImageElement or canvas
-      // create mask canvas and draw maskSource into it
-      const maskCanvas = document.createElement('canvas'); maskCanvas.width = w; maskCanvas.height = h;
-      const mctx = maskCanvas.getContext('2d');
-      // apply blur via canvas filter
-      const blurPx = parseInt(edgeBlur.value,10) || 0;
-      mctx.clearRect(0,0,w,h);
-      // draw mask source with blur filter
-      mctx.filter = `blur(${blurPx}px)`;
-      mctx.drawImage(maskSource, 0,0,w,h);
-      mctx.filter = 'none';
-
-      // Get mask data and original pixels
-      const maskData = mctx.getImageData(0,0,w,h).data;
-      const orig = originalImageData.data;
-      const out = ctx.createImageData(w,h);
-      const thresh = parseInt(alphaThresh.value,10) || 0;
-      const gammaVal = (parseInt(maskGamma.value,10) || 100)/100.0; // gamma adjust, default 1.0
-
-      for(let i=0, j=0; i<out.data.length; i+=4, j+=4){
-        out.data[i]   = orig[i];
-        out.data[i+1] = orig[i+1];
-        out.data[i+2] = orig[i+2];
-        // mask uses R channel (grayscale)
-        let a = maskData[j]; // 0..255
-        // gamma / contrast adjustment for better edge crispness
-        let m = Math.pow(a/255, gammaVal) * 255;
-        // apply threshold for tiny speckles removal
-        if(m < thresh) m = 0;
-        out.data[i+3] = Math.round(m);
-      }
-
-      ctx.clearRect(0,0,w,h);
-      ctx.putImageData(out,0,0);
-    }
-
-    // Public action: HQ remove
-    hqBtn.addEventListener('click', async ()=>{
-      if(!originalImageData) { alert('Please upload an image first'); return; }
-      status('Processing (HQ) — please wait...');
-      const mode = modeSelect.value;
-      try{
-        if(mode === 'person' && useMediaPipe){
-          // MediaPipe path
-          const mask = await segmentWithMediaPipe(img);
-          applyMaskMaskSource(mask);
-          status('HQ segmentation applied (MediaPipe). Tweak blur / threshold if needed.');
-        } else {
-          // fallback via BodyPix
-          await ensureBodyPix();
+          // otherwise fallback to BodyPix
           const maskCanvas = await segmentWithBodyPix(img);
           applyMaskMaskSource(maskCanvas);
-          status('Fallback segmentation applied (BodyPix). Tweak blur / threshold if needed.');
+          setStatus('Done — BodyPix applied (fallback).');
+        } catch (err) {
+          console.error('HQ segmentation error', err);
+          setStatus('HQ failed, attempting fallback...');
+          try {
+            const maskCanvas = await segmentWithBodyPix(img);
+            applyMaskMaskSource(maskCanvas);
+            setStatus('Fallback BodyPix applied.');
+          } catch (e) {
+            console.error(e);
+            setStatus('Both segmentation methods failed. See console.');
+            alert('Segmentation failed. Check console for details.');
+          }
         }
-      }catch(err){
-        console.error(err);
-        status('HQ segmentation failed — using fallback.');
-        try{
-          await ensureBodyPix();
-          const maskCanvas = await segmentWithBodyPix(img);
-          applyMaskMaskSource(maskCanvas);
-          status('Fallback segmentation applied (BodyPix)');
-        }catch(e){
-          console.error(e);
-          status('Both segmentation methods failed. See console.');
-          alert('Segmentation failed. Check console for details.');
+      });
+
+      // Fast removal: quick chroma-like removal for solid backgrounds
+      fastBtn.addEventListener('click', () => {
+        if (!originalImageData) { alert('Please upload an image first'); return; }
+        setStatus('Applying fast removal...');
+        const w = resultCanvas.width, h = resultCanvas.height;
+        const imgd = ctx.createImageData(w,h);
+        imgd.data.set(originalImageData.data);
+        const data = imgd.data;
+
+        // sample background from corners
+        const sampleIdx = [
+          0,
+          (w-1)*4,
+          (w*h - 1)*4,
+          (w*(h-1))*4
+        ];
+        let br=0, bg=0, bb=0;
+        sampleIdx.forEach(idx => { br += data[idx]; bg += data[idx+1]; bb += data[idx+2]; });
+        br /= sampleIdx.length; bg /= sampleIdx.length; bb /= sampleIdx.length;
+
+        const tol = 90; // tolerance
+        for (let i = 0; i < data.length; i += 4) {
+          const dr = data[i] - br, dg = data[i+1] - bg, db = data[i+2] - bb;
+          const dist = Math.sqrt(dr*dr + dg*dg + db*db);
+          if (dist < tol) data[i+3] = 0;
         }
-      }
-    });
+        ctx.putImageData(imgd, 0, 0);
+        setStatus('Fast removal done.');
+      });
 
-    // Fast remove = simple chroma-key style (for product photos with solid background)
-    fastBtn.addEventListener('click', ()=>{
-      if(!originalImageData) { alert('Please upload an image first'); return; }
-      status('Applying fast chroma removal...');
-      // Do a simple green/white background removal based on distance from average background color
-      const w = resultCanvas.width, h = resultCanvas.height;
-      const imgd = ctx.createImageData(w,h);
-      imgd.data.set(originalImageData.data);
-      // compute background color approx from corners
-      const data = imgd.data;
-      const sample = [0, (w-1)*4, (w*h-1)*4, (w*(h-1))*4];
-      let br=0,bg=0,bb=0;
-      sample.forEach(idx=>{ br += data[idx]; bg += data[idx+1]; bb += data[idx+2]; });
-      br/=sample.length; bg/=sample.length; bb/=sample.length;
-      // tolerance
-      const tol = 80;
-      for(let i=0;i<data.length;i+=4){
-        const dr = data[i]-br, dg = data[i+1]-bg, db = data[i+2]-bb;
-        const dist = Math.sqrt(dr*dr + dg*dg + db*db);
-        if(dist < tol) data[i+3] = 0; // transparent
-      }
-      ctx.putImageData(imgd,0,0);
-      status('Fast removal applied — best on solid backgrounds');
-    });
+      // Reset
+      resetBtn.addEventListener('click', () => {
+        if (!originalImageData) return;
+        ctx.putImageData(originalImageData, 0, 0);
+        setStatus('Reset to original');
+      });
 
-    // Reset
-    resetBtn.addEventListener('click', ()=>{
-      if(!originalImageData) return;
-      ctx.putImageData(originalImageData,0,0);
-      status('Reset to original');
-    });
+      // Download - robust toBlob + cleanup
+      downloadBtn.addEventListener('click', () => {
+        if (!resultCanvas.width) { alert('No result to download'); return; }
+        setStatus('Preparing PNG...');
+        resultCanvas.toBlob((blob) => {
+          if (!blob) { alert('Export failed'); setStatus('Export failed'); return; }
+          const link = document.createElement('a');
+          const url = URL.createObjectURL(blob);
+          link.href = url;
+          link.download = 'transparent.png';
+          // append to DOM to make click work on some browsers
+          document.body.appendChild(link);
+          link.click();
+          // cleanup
+          setTimeout(() => {
+            URL.revokeObjectURL(url);
+            link.remove();
+            setStatus('Download started');
+          }, 300);
+        }, 'image/png');
+      });
 
-    // Download PNG
-    downloadBtn.addEventListener('click', ()=>{
-      resultCanvas.toBlob((blob)=>{
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'transparent.png';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-      }, 'image/png');
-    });
+      // initial state
+      setButtonsForImageLoaded(false);
+      setStatus('idle');
 
-    // Keyboard accessibility
-    dropZone.addEventListener('keydown', (e)=>{ if(e.key==='Enter') fileInput.click(); });
-
+      // expose small debug helper (optional) to console
+      window.__bgRemover = {
+        loadImage: (url) => loadImage(url)
+      };
+    })();
   </script>
 </body>
 </html>
